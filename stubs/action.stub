@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace {{ namespace }};
 
 use App\Actions\{{ version }}\Action;
-use App\Exceptions\ValidationErrorException;
-use Illuminate\Http\Request;
+use App\Support\ActionResult;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class {{ actionName }}Action extends Action
 {
@@ -26,9 +24,9 @@ class {{ actionName }}Action extends Action
      * Execute the action
      *
      * @param array|object $data
-     * @return mixed
+     * @return ActionResult
      */
-    public function execute($data)
+    public function execute($data): ActionResult
     {
         // Validate permissions
         $this->validatePermissions([
@@ -42,8 +40,13 @@ class {{ actionName }}Action extends Action
 
         return DB::transaction(function () use ($validated) {
             // Your business logic here
+            // Example: $result = $this->service->create($validated);
 
-            return null;
+            // Return successful result
+            return $this->successResult(
+                data: null, // Replace with your actual result data
+                message: 'Operación completada exitosamente'
+            );
         });
     }
 }
