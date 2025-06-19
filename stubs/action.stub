@@ -1,0 +1,49 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+use App\Actions\{{ version }}\Action;
+use App\Exceptions\ValidationErrorException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Exception;
+
+class {{ actionName }}Action extends Action
+{
+    /**
+     * Constructor - Inject dependencies here
+     */
+    public function __construct()
+    {
+        // Inject services here
+        // Example: $this->service = $service;
+    }
+
+    /**
+     * Execute the action
+     *
+     * @param array|object $data
+     * @return mixed
+     */
+    public function execute($data)
+    {
+        // Validate permissions
+        $this->validatePermissions([
+            // 'permission.name'
+        ]);
+
+        // Validate input data
+        $validated = $this->validateData($data, [
+            // 'field' => 'required|string|max:255',
+        ]);
+
+        return DB::transaction(function () use ($validated) {
+            // Your business logic here
+
+            return null;
+        });
+    }
+}
