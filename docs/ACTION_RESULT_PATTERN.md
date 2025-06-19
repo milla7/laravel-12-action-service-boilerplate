@@ -78,11 +78,16 @@ class CreateUserComponent extends Component
     {
         $result = $this->createUserAction->execute($this->form);
         
-        $user = $result->toLivewire($this);
-        // Automáticamente maneja dispatch de eventos y errores
-        
+        // Manejo manual con control total
         if ($result->isSuccess()) {
+            $this->dispatch('success', $result->getMessage());
             $this->reset('form');
+            $user = $result->getData();
+        } else {
+            $this->dispatch('error', $result->getMessage());
+            foreach ($result->getErrors() as $field => $messages) {
+                $this->addError($field, is_array($messages) ? $messages[0] : $messages);
+            }
         }
     }
 }
@@ -107,7 +112,7 @@ ActionResult::validationError($errors, $message)
 
 ```php
 $result->toApiResponse()      // JsonResponse para APIs
-$result->toLivewire($component) // Maneja Livewire automáticamente
+$result->toLivewireData()     // Array para componentes Livewire
 $result->toFlashData()        // Array para session flash
 $result->toArray()            // Array simple (testing)
 ```
@@ -172,23 +177,39 @@ public function store(Request $request): JsonResponse
 }
 ```
 
-### **Livewire con Validación:**
+### **Livewire con Trait:**
 
 ```php
 // En Livewire Component
-public function save()
+use App\Livewire\Concerns\HandlesActionResults;
+
+class CreateUserComponent extends Component
 {
-    $result = $this->createUserAction->execute($this->form);
+    use HandlesActionResults;
     
-    if ($result->isError()) {
-        // Los errores se agregan automáticamente con toLivewire()
-        $result->toLivewire($this);
-        return;
+    public function save()
+    {
+        $result = $this->createUserAction->execute($this->form);
+        
+        // Manejo simple con trait
+        $user = $this->handleActionResultSimple($result);
+        
+        if ($user) {
+            $this->dispatch('user-created', userId: $user->id);
+        }
     }
     
-    $user = $result->getData();
-    $this->dispatch('user-created', userId: $user->id);
-    $this->reset('form');
+    public function saveAdvanced()
+    {
+        $result = $this->createUserAction->execute($this->form);
+        
+        $user = $this->handleActionResult($result, [
+            'reset_form' => true,
+            'on_success' => function ($user) {
+                $this->dispatch('user-created', userId: $user->id);
+            }
+        ]);
+    }
 }
 ```
 
@@ -207,14 +228,42 @@ return $this->errorResult($message, $errors, $statusCode);
 return $this->validationErrorResult($errors, $message);
 ```
 
+## 🎨 Trait HandlesActionResults
+
+Para evitar repetir código en componentes Livewire, usa el trait:
+
+```php
+<?php
+
+namespace App\Livewire\Concerns;
+
+trait HandlesActionResults
+{
+    // Manejo simple
+    protected function handleActionResultSimple(ActionResult $result, bool $resetForm = true): mixed
+
+    // Manejo avanzado con callbacks
+    protected function handleActionResult(ActionResult $result, array $options = []): mixed
+}
+```
+
+### **Opciones disponibles:**
+
+- `reset_form` - Resetear formulario en éxito
+- `form_property` - Nombre de la propiedad del formulario
+- `on_success` - Callback ejecutado en éxito
+- `on_error` - Callback ejecutado en error
+
 ## ✅ Ventajas
 
 1. **Una sola Action** para API y Livewire
 2. **Respuestas consistentes** en toda la aplicación
 3. **Manejo unificado de errores**
-4. **Fácil testing** con `toArray()`
-5. **Códigos HTTP apropiados** automáticamente
-6. **Menos duplicación** de código
+4. **Sin acoplamiento** entre ActionResult y Livewire
+5. **Fácil testing** con `toArray()`
+6. **Códigos HTTP apropiados** automáticamente
+7. **Menos duplicación** de código
+8. **Control total** del componente sobre el manejo
 
 ## 🧪 Testing
 

@@ -7,7 +7,6 @@ namespace {{ namespace }};
 use App\Actions\{{ version }}\Action;
 use App\Support\ActionResult;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class {{ actionName }}Action extends Action
 {
@@ -21,12 +20,12 @@ class {{ actionName }}Action extends Action
     }
 
     /**
-     * Execute the action
+     * Handle the action logic
      *
      * @param array|object $data
      * @return ActionResult
      */
-    public function execute($data): ActionResult
+    public function handle($data): ActionResult
     {
         // Validate permissions
         $this->validatePermissions([
@@ -36,8 +35,11 @@ class {{ actionName }}Action extends Action
         // Validate input data
         $validated = $this->validateData($data, [
             // 'field' => 'required|string|max:255',
+        ], [
+            // 'field.required' => 'El campo es obligatorio',
         ]);
 
+        // Business logic with transaction
         return DB::transaction(function () use ($validated) {
             // Your business logic here
             // Example: $result = $this->service->create($validated);

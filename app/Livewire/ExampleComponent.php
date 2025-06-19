@@ -9,6 +9,7 @@ use Livewire\Component;
 
 class ExampleComponent extends Component
 {
+    use HandlesActionResults;
     public array $form = [];
     public bool $loading = false;
 
@@ -25,12 +26,18 @@ class ExampleComponent extends Component
 
         $result = $this->exampleAction->execute($this->form);
 
-        // Use the helper method to handle Livewire response
-        $data = $result->toLivewire($this);
-
+        // Handle the result manually with full control
         if ($result->isSuccess()) {
+            $this->dispatch('success', $result->getMessage());
             $this->reset('form');
-            // Additional success handling
+            // Handle success data
+            $data = $result->getData();
+        } else {
+            $this->dispatch('error', $result->getMessage());
+            // Handle validation errors
+            foreach ($result->getErrors() as $field => $messages) {
+                $this->addError($field, is_array($messages) ? $messages[0] : $messages);
+            }
         }
 
         $this->loading = false;
@@ -57,6 +64,46 @@ class ExampleComponent extends Component
                 $this->addError($field, is_array($messages) ? $messages[0] : $messages);
             }
         }
+
+        $this->loading = false;
+    }
+
+    /**
+     * Example using the trait - simple version
+     */
+    public function saveWithTrait()
+    {
+        $this->loading = true;
+
+        $result = $this->exampleAction->execute($this->form);
+
+        // Simple handling with trait
+        $data = $this->handleActionResultSimple($result);
+
+        $this->loading = false;
+    }
+
+    /**
+     * Example using the trait - advanced version with callbacks
+     */
+    public function saveAdvanced()
+    {
+        $this->loading = true;
+
+        $result = $this->exampleAction->execute($this->form);
+
+        $data = $this->handleActionResult($result, [
+            'reset_form' => true,
+            'form_property' => 'form',
+            'on_success' => function ($data) {
+                // Custom success logic
+                $this->dispatch('model-updated', modelId: $data->id ?? null);
+            },
+            'on_error' => function ($result) {
+                // Custom error handling
+                logger()->error('Action failed', $result->toArray());
+            }
+        ]);
 
         $this->loading = false;
     }

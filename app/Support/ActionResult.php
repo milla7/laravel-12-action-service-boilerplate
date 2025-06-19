@@ -79,22 +79,16 @@ class ActionResult
     }
 
     /**
-     * Handle Livewire component response
+     * Get data structure for Livewire components
      */
-    public function toLivewire($component): mixed
+    public function toLivewireData(): array
     {
-        if ($this->success) {
-            $component->dispatch('success', $this->message);
-            return $this->data;
-        } else {
-            $component->dispatch('error', $this->message);
-            if (!empty($this->errors)) {
-                foreach ($this->errors as $field => $messages) {
-                    $component->addError($field, is_array($messages) ? $messages[0] : $messages);
-                }
-            }
-            return null;
-        }
+        return [
+            'success' => $this->success,
+            'data' => $this->data,
+            'message' => $this->message,
+            'errors' => $this->errors,
+        ];
     }
 
     /**

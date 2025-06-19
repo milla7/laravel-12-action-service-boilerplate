@@ -26,26 +26,25 @@ class ExampleController extends Controller
     }
 
     /**
-     * Alternative approach - manual handling
+     * Update user - calls the update method of ExampleAction
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $result = $this->exampleAction->execute([
+        $result = $this->exampleAction->update([
             'id' => $id,
             ...$request->all()
         ]);
 
-        // You can also handle manually if needed
-        if ($result->isSuccess()) {
-            return response()->json([
-                'message' => $result->getMessage(),
-                'data' => $result->getData()
-            ], $result->getStatusCode());
-        }
+        return $result->toApiResponse();
+    }
 
-        return response()->json([
-            'message' => $result->getMessage(),
-            'errors' => $result->getErrors()
-        ], $result->getStatusCode());
+    /**
+     * Check email availability
+     */
+    public function checkEmail(Request $request): JsonResponse
+    {
+        $result = $this->exampleAction->checkEmail($request->all());
+
+        return $result->toApiResponse();
     }
 }
