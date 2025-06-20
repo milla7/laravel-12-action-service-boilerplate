@@ -5,71 +5,37 @@ declare(strict_types=1);
 namespace {{ namespace }};
 
 {{ modelImport }}
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
-use Carbon\Carbon;
+use App\Services\{{ version }}\Service;
 
-class {{ serviceName }}Service
+class {{ serviceName }}Service extends Service
 {
     /**
-     * Items per page for pagination
+     * Constructor - Set the model class
      */
-    protected int $per_page = 10;
+    public function __construct()
+    {
+        $this->modelClass = {{ modelClass }}::class;
 
-    /**
-     * Get paginated results with search and filters
-     *
-     * @param array $filters
-     * @param string $search
-     * @param string $sort_by
-     * @param string $sort_direction
-     * @param int|null $per_page
-     * @return LengthAwarePaginator
-     */
-    public function getPaginated(
-        array $filters = [],
-        string $search = '',
-        string $sort_by = 'id',
-        string $sort_direction = 'desc',
-        ?int $per_page = null
-    ): LengthAwarePaginator {
-        $query = {{ modelClass }}::query();
+        // Configure searchable fields for this service
+        $this->searchableFields = [
+            'name', // Add your searchable fields here
+            // 'email',
+            // 'description',
+        ];
 
-        // Apply search
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->whereRaw('lower(name) like lower(?)', ['%' . strtolower($search) . '%']);
-                // Add more searchable fields as needed
-            });
-        }
-
-        // Apply filters
-        foreach ($filters as $field => $value) {
-            if (!empty($value)) {
-                if (is_array($value)) {
-                    $query->whereIn($field, $value);
-                } else {
-                    $query->where($field, $value);
-                }
-            }
-        }
-
-        // Apply sorting
-        $query->orderByRaw("LOWER({$sort_by}) {$sort_direction}");
-
-        return $query->paginate($per_page ?? $this->per_page);
+        // Configure pagination
+        $this->per_page = 10;
     }
 
     /**
-     * Get all active records
+     * Get active records with company filter (example of domain-specific method)
      *
      * @param int|null $company_id
-     * @return Collection
+     * @return \Illuminate\Support\Collection
      */
-    public function getActive(?int $company_id = null): Collection
+    public function getActiveByCompany(?int $company_id = null): \Illuminate\Support\Collection
     {
-        $query = {{ modelClass }}::where('status', 'A');
+        $query = $this->modelClass::where('status', 'active');
 
         if ($company_id) {
             $query->where('company_id', $company_id);
@@ -79,91 +45,76 @@ class {{ serviceName }}Service
     }
 
     /**
-     * Find by ID
+     * Example: Search by specific field with custom logic
      *
-     * @param int $id
-     * @return {{ modelClass }}|null
+     * @param string $term
+     * @return \Illuminate\Support\Collection
      */
-    public function findById(int $id): ?{{ modelClass }}
+    public function searchByName(string $term): \Illuminate\Support\Collection
     {
-        return {{ modelClass }}::find($id);
+        return $this->modelClass::where('name', 'like', '%' . $term . '%')
+            ->orderBy('name')
+            ->get();
     }
 
     /**
-     * Find by field
+     * Example: Get records with relationship data
      *
-     * @param string $field
-     * @param mixed $value
-     * @param int|null $company_id
-     * @return {{ modelClass }}|null
+     * @param array $relationships
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
-    public function findBy(string $field, $value, ?int $company_id = null): ?{{ modelClass }}
+    public function getPaginatedWithRelations(array $relationships = []): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
-        $query = {{ modelClass }}::where($field, $value);
+        $query = $this->modelClass::query();
 
-        if ($company_id) {
-            $query->where('company_id', $company_id);
+        if (!empty($relationships)) {
+            $query->with($relationships);
         }
 
-        return $query->first();
+        return $query->paginate($this->per_page);
     }
 
     /**
-     * Create new record
+     * Example: Custom validation before create
      *
      * @param array $data
      * @return {{ modelClass }}
+     * @throws \Exception
      */
-    public function create(array $data): {{ modelClass }}
+    public function createWithValidation(array $data): {{ modelClass }}
     {
-        return {{ modelClass }}::create($data);
+        // Add your custom validation logic here
+        if (empty($data['name'])) {
+            throw new \Exception('Name is required');
+        }
+
+        return $this->create($data);
     }
 
     /**
-     * Update record
+     * Example: Bulk operations
      *
-     * @param int $id
+     * @param array $ids
      * @param array $data
-     * @return {{ modelClass }}|null
+     * @return int Number of affected records
      */
-    public function update(int $id, array $data): ?{{ modelClass }}
+    public function bulkUpdate(array $ids, array $data): int
     {
-        $record = $this->findById($id);
-
-        if ($record) {
-            $record->update($data);
-            return $record->fresh();
-        }
-
-        return null;
+        return $this->modelClass::whereIn('id', $ids)->update($data);
     }
 
     /**
-     * Delete record
+     * Example: Get statistics or aggregated data
      *
-     * @param int $id
-     * @return bool
+     * @return array
      */
-    public function delete(int $id): bool
+    public function getStatistics(): array
     {
-        $record = $this->findById($id);
-
-        return $record ? $record->delete() : false;
-    }
-
-    /**
-     * Get temporary URL for file
-     *
-     * @param string|null $path
-     * @param int $minutes
-     * @return string|null
-     */
-    public function getTemporaryUrl(?string $path, int $minutes = 120): ?string
-    {
-        if (!$path) {
-            return null;
-        }
-
-        return Storage::disk('s3')->temporaryUrl($path, Carbon::now()->addMinutes($minutes));
+        return [
+            'total' => $this->count(),
+            'active' => $this->count(['status' => 'active']),
+            'inactive' => $this->count(['status' => 'inactive']),
+            'latest_count' => $this->getLatest(5)->count(),
+        ];
     }
 }
