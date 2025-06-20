@@ -10,9 +10,18 @@ use App\Support\ActionResult;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Exceptions\ValidationErrorException;
+use App\Services\V1\UserService;
 
 class ExampleAction extends Action
 {
+
+
+    public function __construct(
+        private UserService $userService
+    ) {
+        // UserService injected via dependency injection
+    }
+
     /**
      * Create a new user example
      *
@@ -45,7 +54,7 @@ class ExampleAction extends Action
         // Business logic with transaction
         return DB::transaction(function () use ($validated) {
             // Create user
-            $user = User::create([
+            $user = $this->userService->create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
