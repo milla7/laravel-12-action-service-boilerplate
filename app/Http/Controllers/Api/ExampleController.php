@@ -25,26 +25,4 @@ class ExampleController extends Controller
         return $result->toApiResponse();
     }
 
-    /**
-     * Update user - calls the update method of ExampleAction
-     */
-    public function update(Request $request, int $id): JsonResponse
-    {
-        $result = $this->exampleAction->update([
-            'id' => $id,
-            ...$request->all()
-        ]);
-
-        return $result->toApiResponse();
-    }
-
-    /**
-     * Check email availability
-     */
-    public function checkEmail(Request $request): JsonResponse
-    {
-        $result = $this->exampleAction->checkEmail($request->all());
-
-        return $result->toApiResponse();
-    }
 }

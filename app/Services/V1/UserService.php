@@ -1,0 +1,120 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\V1;
+
+use \App\Models\User;
+use App\Services\V1\Service;
+
+class UserService extends Service
+{
+    /**
+     * Constructor - Set the model class
+     */
+    public function __construct()
+    {
+        $this->modelClass = User::class;
+
+        // Configure searchable fields for this service
+        $this->searchableFields = [
+            'name', // Add your searchable fields here
+            // 'email',
+            // 'description',
+        ];
+
+        // Configure pagination
+        $this->per_page = 10;
+    }
+
+    /**
+     * Get active records with company filter (example of domain-specific method)
+     *
+     * @param int|null $company_id
+     * @return \Illuminate\Support\Collection
+     */
+    public function getActiveByCompany(?int $company_id = null): \Illuminate\Support\Collection
+    {
+        $query = $this->modelClass::where('status', 'active');
+
+        if ($company_id) {
+            $query->where('company_id', $company_id);
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * Example: Search by specific field with custom logic
+     *
+     * @param string $term
+     * @return \Illuminate\Support\Collection
+     */
+    public function searchByName(string $term): \Illuminate\Support\Collection
+    {
+        return $this->modelClass::where('name', 'like', '%' . $term . '%')
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * Example: Get records with relationship data
+     *
+     * @param array $relationships
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
+    public function getPaginatedWithRelations(array $relationships = []): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        $query = $this->modelClass::query();
+
+        if (!empty($relationships)) {
+            $query->with($relationships);
+        }
+
+        return $query->paginate($this->per_page);
+    }
+
+    /**
+     * Example: Custom validation before create
+     *
+     * @param array $data
+     * @return User
+     * @throws \Exception
+     */
+    public function createWithValidation(array $data): User
+    {
+        // Add your custom validation logic here
+        if (empty($data['name'])) {
+            throw new \Exception('Name is required');
+        }
+
+        return $this->create($data);
+    }
+
+    /**
+     * Example: Bulk operations
+     *
+     * @param array $ids
+     * @param array $data
+     * @return int Number of affected records
+     */
+    public function bulkUpdate(array $ids, array $data): int
+    {
+        return $this->modelClass::whereIn('id', $ids)->update($data);
+    }
+
+    /**
+     * Example: Get statistics or aggregated data
+     *
+     * @return array
+     */
+    public function getStatistics(): array
+    {
+        return [
+            'total' => $this->count(),
+            'active' => $this->count(['status' => 'active']),
+            'inactive' => $this->count(['status' => 'inactive']),
+            'latest_count' => $this->getLatest(5)->count(),
+        ];
+    }
+}
